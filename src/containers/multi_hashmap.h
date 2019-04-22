@@ -10,12 +10,10 @@
 #include <functional>
 
 namespace amazoom {
-	/*Internally, storage is an unordered_map pointing to linkedlists. Reason: O(1) average case insertion and extraction
-	* and O(N) worse case if all items have the same key, and a unique filter. sets are O(log(n)) worst, and average
-	* unfortunately, due to the limitations of C+11 every hash map entry will point to a linked list
-	* of other items who happen to have a similar hash
-	* Because of the possibility of two different-key items producing the same hash, we cant pull front to back blindly
-	* Secondly, pulling from the back of the linked list avoids having to rehash
+	/* A multihashmap allows for quick insertions of objects, mapped by keys that need not be unique.
+	*  Internally, storage is an unordered_map pointing to linkedlists. O(1) average case insertion 
+	*  and extraction, and O(N) worse case if all items have the same key, and chooses to select 
+	*  by a unique filter. Performs closer to O(1) if there are are many keys
 	*/
 	template <typename T_KEY, class T_OBJ>
 	
@@ -24,14 +22,12 @@ namespace amazoom {
 		class LinkedListNode; //forward declare
 		class DataLinkedListNode;
 
-		//Linked list class implementation, containing a key for referencing uniqueness
-		//and data for data
+		//Linked list implementation
 	    typedef std::shared_ptr<LinkedListNode> NodePtr;
 		typedef std::shared_ptr<DataLinkedListNode> DataNodePtr;
 		typedef std::unordered_map<T_KEY, NodePtr> Map;
 
-
-		//LinkedList default
+		//LinkedList default. Only used for the first node of all linked lists
 		class LinkedListNode{
 		public:
 			LinkedListNode(NodePtr nxtptr) : nxtptr_(nxtptr) {}
@@ -39,53 +35,64 @@ namespace amazoom {
 			NodePtr nxtptr_;
 		};
 
-		//LinkedList plus Data
+		//LinkedList plus Data. Used for all nodes after the root node.
+		//Having an unmovable root node avoids the problem of having to
+		//reinsert nodes into the unordered_map should the first node
+		//be extracted.
 		class DataLinkedListNode : public LinkedListNode {
 		public:
-			DataLinkedListNode(NodePtr nxtptr, T_KEY key, T_OBJ& obj) : LinkedListNode(nxtptr), key_(key), obj_(std::move(obj)) {}
+			DataLinkedListNode(NodePtr nxtptr, T_KEY key, T_OBJ& obj) 
+			: LinkedListNode(nxtptr), key_(key), obj_(std::move(obj)) {}
+
 			DataLinkedListNode(T_KEY key, T_OBJ& obj) : key_(key), obj_(std::move(obj)) {}
+
 			T_KEY key_;
 			T_OBJ obj_;
 		};
 		
-	
 	public:
-
 		MultiHashmap();
 		~MultiHashmap();
 
 		int getNumItems() const; //returns how many items are currently stored
 
-		/*Inserts an object into the container, indexed by a given key.
-		* Throws MultiContainerFullException if the container is full.
-		* If an exception is thrown, obj will not be modified. Successful insertion will
-		* call obj's and key's move constructor
-		*/
+		//Inserts an object into the container indexed by a key.
 		void insertItem(T_KEY key, T_OBJ& obj);
 
-		/*Allows the user to define a custom matching policy, and test the stored objects against it
-		* Uses: When you have multiple objects with the same key, but different internal attributes
-		*      you may narrow the search by giving this a custom matching policy function
+		/*Checks whether the class contains an object stored using this key, that also satisfies a user-defined
+		* comparison function, compareFxn. 
+		*
+		* Uses: When there are multiple objects stored with the same key, you may narrow the search 
+		* by giving this a custom comparison function.
+		*
+		* Example of calling this function: 
+		* int key = 0;
+		* thisHashmap.doesContainObj(key, [desiredMemberGet, desiredAttribute](const T_OBJ& obj)->bool {
+		*  return (obj.getSomeMember() == desiredMemberGet && obj.attribute >= desiredAttribute; }}; 
 		*/
 		bool doesContainObj(const T_KEY& key, const std::function<bool(const T_OBJ& obj)> compareFxn) const;
 
-		/*If no matching policy is provided, will search purely by key
-		*/
+		/*If no comparison function is provided, will search purely by key */
 		bool doesContainObj(const T_KEY& key) const;
 
-		/*Attempts to extract any object matching key. If no such object can be found
-		* MultiHashMapNoSuchObj is thrown
-		*/
+		/*Extracts any object matching key. If no such object can be found MultiHashMapNoSuchObj is thrown*/
 		T_OBJ extractItem(const T_KEY& key);
 
-		/*Attempts to extract any object matching key that also returns true when put through a
-		* user-defined custom matching policy. If no such item can be found, MultiHashMapNoSuchObj is thrown
+		/*Extracts the first time found that matches this key that also satifies a 
+		* user-defined comparison function, compareFxn.
+		* If no object matching these parms are found, MultiHashMapNoSuchObj is thrown.
+		*
+		* Example of calling this function:
+		* int key = 0;
+		* thisHashmap.extractItem(key, [desiredMemberGet, desiredAttribute](const T_OBJ& obj)->bool {
+		*  return (obj.getSomeMember() == desiredMemberGet && obj.attribute < desiredAttribute; }};
 		*/
 		T_OBJ extractItem(const T_KEY& key, const std::function<bool(const T_OBJ& obj)> compareFxn);
 
 	private:
 		int currentNumItems; //how many items are stored
-		const std::function<bool(const T_OBJ& obj)> defaultCompareFxn_;
+		const std::function<bool(const T_OBJ& obj)> defaultCompareFxn_; //returns true
+
 		Map storInternal_;
 	};
 }
@@ -105,17 +112,14 @@ inline int amazoom::MultiHashmap<T_KEY, T_OBJ>::getNumItems() const{
 	return currentNumItems;
 }
 
-//may throw MultiContainerFullException
 template <typename T_KEY, class T_OBJ>
 inline void amazoom::MultiHashmap<T_KEY, T_OBJ>::insertItem(T_KEY key, T_OBJ& obj) {
 	if (storInternal_.count(key)) { //if the root node already exists
 		//grab the root node
 		NodePtr rootNodePtr(storInternal_.at(key));
 		
-		//All new nodes containing data are placed after the root node.
-		//having a constant, no-data containing root node avoids the inefficiency of having to re-insert
-		//the linkedlist into the hashmap every time we extract an object.
-		//The topology of the hashmap is below
+		/*All new nodes are inserted directly after the root node.
+		//The topology of the system is below
 		//  
 		//| HASH FXN |   |ROOT  NODE|   |DataLinkedListNode(currentNode)|    |  DataLinkedListNode(nextNode) |
 		//|__________|   |__________|   |_______________________________|    |_______________________________|
@@ -123,15 +127,17 @@ inline void amazoom::MultiHashmap<T_KEY, T_OBJ>::insertItem(T_KEY key, T_OBJ& ob
 		//|          |   |(change to|   |         to the next node      |    |							     |
 		//|          |   | new Node)|   |                               |    |                               |
 		//------------   ------------   ---------------------------------    ---------------------------------
+		*/
+
 		NodePtr nextNodePtr(rootNodePtr->nxtptr_);
 
-		//create newnode to be inserted into linked list, and connect it to the next node
+		//create newnode to be inserted into linked list, and connect to the node that was originally in its place
 		NodePtr newNode = std::make_shared<DataLinkedListNode>(nextNodePtr, key, obj);
 
 		//re-link the first node
 		rootNodePtr->nxtptr_ = newNode;
 	}
-	else { //there does not exist other items stored at this hash so create an empty root node, and linked it to the new node
+	else { //There are no items stored at this hash. Create an empty root node, a data node and connect them.
 
 		//create node the connects to the root. This contains key, and obj
 		NodePtr dataNodePtr(std::make_shared<DataLinkedListNode>(nullptr, key, obj));
@@ -154,7 +160,7 @@ inline bool amazoom::MultiHashmap<T_KEY, T_OBJ>::doesContainObj(const T_KEY& key
 		return false;
 	}
 	else {
-		//the root exists, now traverse the linked list and search for an object with a matching key
+		//the root exists, now traverse the linked list and search for an object with a matching key that satisfies the compare function
 		DataNodePtr currentNodePtr = std::static_pointer_cast<DataLinkedListNode>(storInternal_.at(key)->nxtptr_);
 
 		while (currentNodePtr != nullptr) {
@@ -163,9 +169,8 @@ inline bool amazoom::MultiHashmap<T_KEY, T_OBJ>::doesContainObj(const T_KEY& key
 			}
 			currentNodePtr = std::static_pointer_cast<DataLinkedListNode>(currentNodePtr->nxtptr_);
 		}
-		return false;
 	}
-
+	return false;
 }
 
 
@@ -185,35 +190,29 @@ template<typename T_KEY, class T_OBJ>
 inline T_OBJ amazoom::MultiHashmap<T_KEY, T_OBJ>::extractItem(
 	const T_KEY& key, const std::function<bool(const T_OBJ&obj)> compareFxn) {
 
-
-	//if no items exist with matching key
-
-	std::cout << storInternal_.count(key);
 	if (!storInternal_.count(key)) {
 		throw MultiHashMapNoSuchObj("Container does not contain object matching key: " + key);
 	}
-	//first item is always the root node. Nodes that contain actual data begin at the second node
+	//first item is always the root node. Nodes that contain actual data begin after
 	NodePtr rootPtr = storInternal_.at(key);
 	NodePtr currentNodePtr = rootPtr->nxtptr_;
 	NodePtr prevNode(rootPtr);
 
 	while (currentNodePtr->nxtptr_ != nullptr) {
 		if (currentNodePtr == nullptr) {
+			//reached the end of the linked list, no matches
 			throw MultiHashMapNoSuchObj("Container does not contain object matching special params and key: " + key);
 		}
 
 		auto castedNodePtr = std::static_pointer_cast<DataLinkedListNode>(currentNodePtr);
 
-		//key must match, and user defined matching policy must be true
+		//key must match, and user defined comparison function must return true
 		if (castedNodePtr->key_ == key && compareFxn(castedNodePtr->obj_)) { break; };
 
 		prevNode = currentNodePtr;
 		currentNodePtr = currentNodePtr->nxtptr_;
-
-		//if we are at the end of the linkedlist and no item matching these paramters can be found
-		
 	}
-	// extract the contents of the item
+	// extract the data content of the node
 	T_OBJ extractedObj(std::move(std::static_pointer_cast<DataLinkedListNode>(currentNodePtr)->obj_));
 
 	//detach this node from the linked list
