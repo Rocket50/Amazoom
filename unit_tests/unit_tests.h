@@ -3,8 +3,8 @@
 #include "stdafx.h"
 #include "CppUnitTest.h"
 
-#include "AmazoomCPP11/Amazoom/src/warehouse_etc/item_definition.h"
-#include "AmazoomCPP11/Amazoom/src/containers/multi_hashmap.h"
+#include "warehouse_etc/item_definition.h"
+#include "containers/multi_hashmap.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
