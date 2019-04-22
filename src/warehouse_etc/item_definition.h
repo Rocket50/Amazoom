@@ -29,11 +29,11 @@ namespace amazoom {
 
 		//this is member style overloading
 		bool operator== (const Item &item); //overload item==item
-											//checks item similarity by itemID only
+		bool operator!= (const Item &item);	//checks item similarity by itemID only
+
 		enum { INVALID_ITEM = -1 }; //when an item no longer exists because of move, destruction, etc
 
 	private:
-
 		amazoom::ItemProperties itemProp_;
 
 		//Transfers internal "ItemProperties" from i2 to i1, and sets i2 properties as invalid enum
@@ -41,9 +41,6 @@ namespace amazoom {
 		amazoom::Item& swapAndClearProperties(Item& i1, Item& i2);
 	};
 	void printItem(const Item& i1);
-	//this is normal overloading
-	bool operator!= (const Item &i1, const Item &i2);
-
 }
 
 #endif 

@@ -26,10 +26,6 @@ void amazoom::printItem(const amazoom::Item& i1) {
 	std::cout << "This item has an id: " << i1.getID() << ", is weight: " << i1.getWeight() << '\n';
 }
 
-bool amazoom::operator!=(const Item & i1, const Item & i2) {
-	return(i1.getID() != i2.getID());
-}
-
 amazoom::Item::Item(Item && item)
 	: itemProp_{ item.itemProp_.itemID, item.itemProp_.weight, item.itemProp_.isLarge } {
 
@@ -50,7 +46,11 @@ bool amazoom::Item::isLarge() const {
 }
 
 bool amazoom::Item::operator== (const amazoom::Item& item) {
-	return (itemProp_.itemID == item.itemProp_.itemID);
+	return (itemProp_.itemID == item.getID());
+}
+
+bool amazoom::Item::operator!=(const Item& item) {
+	return(itemProp_.itemID != item.getID());
 }
 
 amazoom::Item& amazoom::Item::swapAndClearProperties(Item & i1, Item & i2) {
