@@ -20,7 +20,7 @@ namespace AmazoomUnitTests
 
 
 	//create and checks whether item is created with the right values
-	TEST_METHOD(Item_CheckValue) {
+	TEST_METHOD(CheckValue) {
 		const int itemID = 1;
 		const float weight = 12.0f;
 		amazoom::Item i(itemID, weight, true);
@@ -35,7 +35,7 @@ namespace AmazoomUnitTests
 
 	void Item_PassByValue(amazoom::Item i) {}
 	//creates and checks constructor rules
-	TEST_METHOD(Item_CheckCopyCon) {
+	TEST_METHOD(CheckCopyCon) {
 
 		const int itemID1 = 1;
 		const float weight1 = 12.0f;
@@ -47,7 +47,7 @@ namespace AmazoomUnitTests
 
 	}
 
-	TEST_METHOD(Item_CheckCopyAssign) {
+	TEST_METHOD(CheckCopyAssign) {
 
 		const int itemID1 = 1;
 		const float weight1 = 12.0f;
@@ -55,7 +55,29 @@ namespace AmazoomUnitTests
 		amazoom::Item oldItem(itemID1, weight1);
 		amazoom::MultiHashmap<int, amazoom::Item> bob;
 	}
+
+	TEST_METHOD(OverloadedCompares) {
+
+		const int itemID1 = 1;
+		const float weight1 = 12.0f;
+
+		amazoom::Item item(itemID1, weight1);
+		amazoom::Item item2(itemID1, weight1);
+		
+		 
+		bool isEqual = (item == item2);
+		Assert::IsTrue(isEqual);
+		const int itemID2 = 5;
+		
+		amazoom::Item item3(itemID2, weight1);
+		isEqual = (itemID2 == weight1);
+
+		Assert::IsFalse(isEqual);
+
 	};
+
+	};
+};
 
 	TEST_CLASS(Mult_Hashmap_Testing) {
 
@@ -324,12 +346,5 @@ namespace AmazoomUnitTests
 			checkItemEquals(extractedItem2, id1, weight1);
 			Assert::AreEqual(0, container.getNumItems());
 		};
-
-		
-
-
-
 	};
 
-
-};
