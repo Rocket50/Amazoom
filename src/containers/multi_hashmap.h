@@ -32,8 +32,8 @@ namespace amazoom {
 		//LinkedList default. Only used for the first node of all linked lists
 		class LinkedListNode {
 		public:
-			LinkedListNode(NodePtr nxtptr) : nxtptr_(nxtptr) {}
-			NodePtr nxtptr_{nullptr};
+			LinkedListNode(NodePtr nxtptr = nullptr) : nxtptr_(nxtptr) {}
+			NodePtr nxtptr_{};
 		};
 
 		//LinkedList plus Data. Used for all nodes after the root node.

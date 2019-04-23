@@ -8,7 +8,7 @@ namespace amazoom {
 	class MultiHashMapNoSuchObj : public std::exception {
 
 	public:
-		MultiHashMapNoSuchObj(std::string error);
+		MultiHashMapNoSuchObj(std::string error) {};
 
 		const char* what() const noexcept { return error_.c_str(); }
 
