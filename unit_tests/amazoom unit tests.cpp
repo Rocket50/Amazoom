@@ -3,14 +3,18 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
+#include <ctime>
+#include <random>
+#include <functional>
 
 #include "warehouse_etc/item_definition.h"
 #include "containers/multi_hashmap.h"
 
 #include "unit_tests.h"
 
-#include <ctime>
-#include <random>
+#include "boost/thread.hpp"
+
+
 
 namespace AmazoomUnitTests
 {		
@@ -345,6 +349,103 @@ namespace AmazoomUnitTests
 
 			checkItemEquals(extractedItem2, id1, weight1);
 			Assert::AreEqual(0, container.getNumItems());
+		};
+
+		static void multithreadingInsert(const int NUM_INSERTIONS, 
+			amazoom::MultiHashmap<int, amazoom::Item>& hashmap, 
+			std::vector<std::pair<int, float>>& results,
+			std::mt19937& eng) {
+
+			const int MAX_RAND_ID = 20;
+			const float MAX_WEIGHT = 10.0f;
+
+			for (int i = 0; i < NUM_INSERTIONS; i++) {
+				auto idRandomizer = std::uniform_int_distribution<int>(0, MAX_RAND_ID);
+				int randID(idRandomizer(eng));
+
+				float randWeight(1 + std::rand() / ((RAND_MAX + 1u) / MAX_WEIGHT));
+
+
+				results.push_back(
+					std::make_pair<int, float>(std::move(randID), std::move(randWeight)));
+
+				amazoom::Item newItem(randID, randWeight);
+				hashmap.insertItem(newItem.getID(), newItem);
+
+			}
+		}
+
+		TEST_METHOD(RandomMultithreading) {
+
+			const int NUM_TO_TEST_PER_THREAD = 3000;
+			const int THREADS = 4;
+
+
+			std::srand(std::time(nullptr)); // use current time as seed for random generator
+			std::random_device rd; // obtain a random number from hardware
+			std::mt19937 eng(rd()); // seed the generator
+
+			std::vector<std::pair<int, float>> itemCreateVals;
+
+
+
+			amazoom::MultiHashmap<int, amazoom::Item> hashmap;
+
+			std::vector<std::pair<int, float>> stuff[THREADS];
+
+			std::vector<std::unique_ptr<boost::thread>> threads;
+
+			//create empty threads, not started
+			for (int i = 0; i < THREADS; i++) {
+				threads.push_back(
+					std::unique_ptr<boost::thread>());
+
+
+			}
+
+			//start each thread
+			for (int i = 0; i < THREADS; i++) {
+
+				threads.at(i).reset(((new boost::thread(multithreadingInsert, NUM_TO_TEST_PER_THREAD, std::ref(hashmap), std::ref(stuff[i]), std::ref(eng)))));
+
+			}
+
+			//wait for each thread to finish its job
+			for (int i = 0; i < THREADS; i++) {
+				threads.at(i)->join();
+			}
+
+
+			for (int i = 0; i < THREADS; i++) {
+				for (unsigned int j = 0; j < NUM_TO_TEST_PER_THREAD; j++) {
+					itemCreateVals.push_back(stuff[i].back());
+					stuff[i].pop_back();
+				}
+
+			}
+
+
+
+			for (int i = 0; i < (NUM_TO_TEST_PER_THREAD*THREADS); i++) {
+
+				auto idRandomizer = std::uniform_int_distribution<int>(0, itemCreateVals.size() - 1);
+				int randID(idRandomizer(eng));
+
+				std::pair<int, float> toRetrieve = itemCreateVals.at(randID);
+				const int id = std::get<int>(toRetrieve);
+				const float weight = std::get<float>(toRetrieve);
+
+				itemCreateVals.erase(itemCreateVals.begin() + randID);
+
+				auto comparisonFuncWeightID = [weight](const amazoom::Item& item)->bool {
+					return item.getWeight() == weight;
+				};
+
+				amazoom::Item itemRetrieved(hashmap.extractItem(id, comparisonFuncWeightID));
+
+				checkItemEquals(itemRetrieved, id, weight);
+
+			}
 		};
 	};
 

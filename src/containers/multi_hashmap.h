@@ -1,19 +1,21 @@
-#ifndef AMAZOOM_CONTAINERS_MULTI_HASHMAP_H
-#define AMAZOOM_CONTAINERS_MULTI_HASHMAP_H
+#ifndef AMAZOOM_CONTAINERS_MULTI_HASHMAP_H_
+#define AMAZOOM_CONTAINERS_MULTI_HASHMAP_H_
 
 #include "warehouse_etc/item_definition.h"
-
-#include "containers/multi_hashmap_exceptions.h"
 
 #include <unordered_map>
 #include <memory>
 #include <functional>
+
+#include "containers/multi_hashmap_exceptions.h"
+#include "boost/thread.hpp"
 
 namespace amazoom {
 	/* A multihashmap allows for quick insertions of objects, mapped by keys that need not be unique.
 	*  Internally, storage is an unordered_map pointing to linkedlists. O(1) average case insertion 
 	*  and extraction, and O(N) worse case if all items have the same key, and chooses to select 
 	*  by a unique filter. Performs closer to O(1) if there are are many keys
+	*  Thread-safe. Allows multiple simutaneous reads, and single extraction/insertions
 	*/
 	template <typename T_KEY, class T_OBJ>
 	
@@ -28,11 +30,10 @@ namespace amazoom {
 		typedef std::unordered_map<T_KEY, NodePtr> Map;
 
 		//LinkedList default. Only used for the first node of all linked lists
-		class LinkedListNode{
+		class LinkedListNode {
 		public:
 			LinkedListNode(NodePtr nxtptr) : nxtptr_(nxtptr) {}
-			LinkedListNode() : nxtptr_(nullptr) {}
-			NodePtr nxtptr_;
+			NodePtr nxtptr_{nullptr};
 		};
 
 		//LinkedList plus Data. Used for all nodes after the root node.
@@ -42,7 +43,7 @@ namespace amazoom {
 		class DataLinkedListNode : public LinkedListNode {
 		public:
 			DataLinkedListNode(NodePtr nxtptr, T_KEY key, T_OBJ& obj) 
-			: LinkedListNode(nxtptr), key_(key), obj_(std::move(obj)) {}
+				: LinkedListNode(nxtptr), key_(key), obj_(std::move(obj)) {}
 
 			DataLinkedListNode(T_KEY key, T_OBJ& obj) : key_(key), obj_(std::move(obj)) {}
 
@@ -89,19 +90,24 @@ namespace amazoom {
 		*/
 		T_OBJ extractItem(const T_KEY& key, const std::function<bool(const T_OBJ& obj)> compareFxn);
 
+		MultiHashmap<T_KEY, T_OBJ>(const MultiHashmap<T_KEY, T_OBJ>& init) {};
+
 	private:
-		int currentNumItems; //how many items are stored
-		const std::function<bool(const T_OBJ& obj)> defaultCompareFxn_; //returns true
+		int currentNumItems{ 0 }; //how many items are stored
+		const std::function<bool(const T_OBJ& obj)> defaultCompareFxn_{ 
+			[](const T_OBJ&)->bool {return true; } 
+		}; //returns true
 
 		Map storInternal_;
+
+		//class level mutex. Separates reading and writing operations
+		mutable boost::shared_mutex mtx_;
+
 	};
 }
 
 template <typename T_KEY, class T_OBJ>
-inline amazoom::MultiHashmap<T_KEY, T_OBJ>::MultiHashmap(): storInternal_(Map()), 
-															currentNumItems(0), 
-															defaultCompareFxn_([](const T_OBJ&)->bool {return true; }) {
-}
+inline amazoom::MultiHashmap<T_KEY, T_OBJ>::MultiHashmap(){}
 
 template <typename T_KEY, class T_OBJ>
 inline amazoom::MultiHashmap<T_KEY, T_OBJ>::~MultiHashmap() {
@@ -109,15 +115,19 @@ inline amazoom::MultiHashmap<T_KEY, T_OBJ>::~MultiHashmap() {
 
 template<typename T_KEY, class T_OBJ>
 inline int amazoom::MultiHashmap<T_KEY, T_OBJ>::getNumItems() const{
+	boost::unique_lock<boost::shared_mutex> lock(mtx_);
 	return currentNumItems;
 }
 
 template <typename T_KEY, class T_OBJ>
 inline void amazoom::MultiHashmap<T_KEY, T_OBJ>::insertItem(T_KEY key, T_OBJ& obj) {
+
+	boost::unique_lock<boost::shared_mutex> lock(mtx_);
+	
+
 	if (storInternal_.count(key)) { //if the root node already exists
 		//grab the root node
 		NodePtr rootNodePtr(storInternal_.at(key));
-		
 		/*All new nodes are inserted directly after the root node.
 		//The topology of the system is below
 		//  
@@ -149,12 +159,14 @@ inline void amazoom::MultiHashmap<T_KEY, T_OBJ>::insertItem(T_KEY key, T_OBJ& ob
 		storInternal_.insert(std::make_pair<T_KEY, NodePtr>(std::move(key), std::move(newRootNode)));
 	}
 
+	//lock counter
 	currentNumItems++;
 	
 }
 
 template<typename T_KEY, class T_OBJ>
 inline bool amazoom::MultiHashmap<T_KEY, T_OBJ>::doesContainObj(const T_KEY& key, const std::function<bool(const T_OBJ& obj)> compareFxn) const {
+	boost::unique_lock<boost::shared_mutex> lock(mtx_);
 
 	if (storInternal_.count(key) == 0) {
 		return false;
@@ -176,13 +188,13 @@ inline bool amazoom::MultiHashmap<T_KEY, T_OBJ>::doesContainObj(const T_KEY& key
 
 template<typename T_KEY, class T_OBJ>
 inline bool amazoom::MultiHashmap<T_KEY, T_OBJ>::doesContainObj(const T_KEY& key) const {
+	//mutex inside
 	return doesContainObj(key, defaultCompareFxn_);
 }
 
 template <typename T_KEY, class T_OBJ>
 inline T_OBJ amazoom::MultiHashmap<T_KEY, T_OBJ>::extractItem(const T_KEY& key){
-
-	//no special filtering policy, so return true
+	//mutex inside
 	return extractItem(key, defaultCompareFxn_);
 }
 
@@ -190,13 +202,21 @@ template<typename T_KEY, class T_OBJ>
 inline T_OBJ amazoom::MultiHashmap<T_KEY, T_OBJ>::extractItem(
 	const T_KEY& key, const std::function<bool(const T_OBJ&obj)> compareFxn) {
 
+	boost::unique_lock<boost::shared_mutex> lock(mtx_);
+
 	if (!storInternal_.count(key)) {
 		throw MultiHashMapNoSuchObj("Container does not contain object matching key: " + key);
 	}
+	
 	//first item is always the root node. Nodes that contain actual data begin after
-	NodePtr rootPtr = storInternal_.at(key);
+	NodePtr rootPtr = storInternal_.at(key); 
 	NodePtr currentNodePtr = rootPtr->nxtptr_;
 	NodePtr prevNode(rootPtr);
+
+	//only root exists, no data node. this occurs when all items matching this key have been taken out
+	if (rootPtr->nxtptr_ == nullptr) {
+		throw MultiHashMapNoSuchObj("Container does not contain object matching key: " + key);
+	}
 
 	while (currentNodePtr->nxtptr_ != nullptr) {
 		if (currentNodePtr == nullptr) {
@@ -219,6 +239,7 @@ inline T_OBJ amazoom::MultiHashmap<T_KEY, T_OBJ>::extractItem(
 	prevNode->nxtptr_ = currentNodePtr->nxtptr_;
 
 	currentNumItems--;
+
 	return std::move(extractedObj);
 }
 

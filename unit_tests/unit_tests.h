@@ -22,3 +22,4 @@ void checkItemIsInvalid(amazoom::Item& i) {
 	Assert::AreEqual(i.getID(), static_cast<int>(amazoom::Item::INVALID_ITEM));
 }
 
+
