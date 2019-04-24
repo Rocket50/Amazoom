@@ -9,6 +9,7 @@
 
 #include "containers/multi_hashmap_exceptions.h"
 #include "boost/thread.hpp"
+#include "containers/item_storage.h"
 
 namespace amazoom {
 	/* A multihashmap allows for quick insertions of objects, mapped by keys that need not be unique.
