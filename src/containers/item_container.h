@@ -1,8 +1,6 @@
 #ifndef AMAZOOM_CONTAINERS_ITEM_CONTAINER_H_
 #define AMAZOOM_CONTAINERS_ITEM_CONTAINER_H_
 
-
-
 #include "warehouse_etc/item_definition.h"
 #include "containers/multi_hashmap_impl.h"
 #include "containers/worker_accessible_container.h"
@@ -15,6 +13,9 @@ namespace amazoom {
 	class ItemContainer {
 	private:
 		typedef std::unique_ptr<WorkerAccessibleContainer> StoragePtr;
+
+	protected:
+		StoragePtr storage_{ std::unique_ptr<MultiHashmapImpl>(new MultiHashmapImpl()) };
 
 	public:
 		ItemContainer();
@@ -41,11 +42,7 @@ namespace amazoom {
 
 		//User implemented insertion function
 		virtual void insertItem(Item& item) = 0;
-
-	protected:
-		StoragePtr storage_{ std::unique_ptr<MultiHashmapImpl>(new MultiHashmapImpl()) };
 	};
-
 }
 
 #endif

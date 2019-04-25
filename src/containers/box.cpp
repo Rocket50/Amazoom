@@ -1,4 +1,4 @@
-#include "containers/box.h"
+#include "box.h"
 
 
 amazoom::Box::Box(const float max_weight) : MAX_WEIGHT_(max_weight){}

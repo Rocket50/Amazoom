@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AMAZOOM_CONTAINERS_ITEM_CONTAINER_EXCEPTIONS_H_
+#define AMAZOOM_CONTAINERS_ITEM_CONTAINER_EXCEPTIONS_H_
 
 #include <exception>
 #include <string>
@@ -18,3 +19,5 @@ private:
 
 
 };
+
+#endif

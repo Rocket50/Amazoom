@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AMAZOOM_CONTAINERS_WORKER_ACCESSIBLE_CONTAINER_H_
+#define AMAZOOM_CONTAINERS_WORKER_ACCESSIBLE_CONTAINER_H_
 
 #include "warehouse_etc/item_definition.h"
 
@@ -47,5 +48,7 @@ namespace amazoom {
 	/*Interface for swapping out an underlying storage class
 	* Containers must be checkable, and storable
 	*/
-	class WorkerAccessibleContainer : public Storable, public Checkable{ };
+	class WorkerAccessibleContainer : public Storable, public Checkable { };
 }
+
+#endif
