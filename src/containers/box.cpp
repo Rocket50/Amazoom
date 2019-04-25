@@ -27,9 +27,8 @@ void amazoom::Box::insertItem(Item& item) {
 	if (wouldBeOverweight(item)) {
 		throw BoxOverweightException("Item too heavy to be inserted.");  
 	}
-	
-	currWeight_ += item.getWeight();
 	storage_->insertItem(item.getID(),item);
+	currWeight_ += item.getWeight();
 }
 
 float amazoom::Box::currentWeight() {
