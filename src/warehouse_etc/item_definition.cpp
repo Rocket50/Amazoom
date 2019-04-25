@@ -7,6 +7,7 @@ amazoom::Item::Item(int itemID, float weight)
 amazoom::Item::Item(int itemID, float weight, bool isLarge)
 	: itemProp_{ itemID, weight, isLarge } {}
 
+amazoom::Item::Item(const ItemProperties itemProp) : itemProp_(itemProp) {}
 
 amazoom::Item::~Item() {}
 

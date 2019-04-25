@@ -12,6 +12,7 @@ namespace amazoom {
 	public:
 		Item(int itemID, float weight);
 		Item(int itemID, float weight, bool isLarge);
+		Item(const ItemProperties itemProp);
 		~Item();
 
 		Item(Item &item) = delete; //copy constructor - transfer rhs item to lhs, set rhs to invalid
