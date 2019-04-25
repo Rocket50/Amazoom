@@ -5,16 +5,16 @@
 #include <string>
 
 namespace amazoom {
-	class MultiHashMapNoSuchObj : public std::exception {
+class MultiHashMapNoSuchObj : public std::exception {
 
-	public:
-		MultiHashMapNoSuchObj(std::string error) {};
+public:
+	MultiHashMapNoSuchObj(std::string error) {};
 
-		const char* what() const noexcept { return error_.c_str(); }
+	const char* what() const noexcept { return error_.c_str(); }
 
-	private:
-		const std::string error_;
-	};
+private:
+	const std::string error_;
+};
 }
 
 

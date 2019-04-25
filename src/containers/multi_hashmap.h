@@ -11,101 +11,101 @@
 #include "boost/thread.hpp"
 
 namespace amazoom {
-	/* A multihashmap allows for quick insertions of objects, mapped by keys that need not be unique.
-	*  Internally, storage is an unordered_map pointing to linkedlists. O(1) average case insertion 
-	*  and extraction, and O(N) worse case if all items have the same key, and chooses to select 
-	*  by a unique filter. Performs closer to O(1) if there are are many keys
-	*  Thread-safe. Allows multiple simutaneous reads, and single extraction/insertions
-	*/
-	template <typename T_KEY, class T_OBJ>
-	class MultiHashmap {
+/* A multihashmap allows for quick insertions of objects, mapped by keys that need not be unique.
+*  Internally, storage is an unordered_map pointing to linkedlists. O(1) average case insertion 
+*  and extraction, and O(N) worse case if all items have the same key, and chooses to select 
+*  by a unique filter. Performs closer to O(1) if there are are many keys
+*  Thread-safe. Allows multiple simutaneous reads, and single extraction/insertions
+*/
+template <typename T_KEY, class T_OBJ>
+class MultiHashmap {
 
-		class LinkedListNode; //forward declare
-		class DataLinkedListNode;
+	class LinkedListNode; //forward declare
+	class DataLinkedListNode;
 
-		//Linked list implementation
-	    typedef std::shared_ptr<LinkedListNode> NodePtr;
-		typedef std::shared_ptr<DataLinkedListNode> DataNodePtr;
-		typedef std::unordered_map<T_KEY, NodePtr> Map;
-		typedef std::function<bool(const Item& obj)> CompareFxn;
+	//Linked list implementation
+	typedef std::shared_ptr<LinkedListNode> NodePtr;
+	typedef std::shared_ptr<DataLinkedListNode> DataNodePtr;
+	typedef std::unordered_map<T_KEY, NodePtr> Map;
+	typedef std::function<bool(const Item& obj)> CompareFxn;
 
-		//LinkedList default. Only used for the first node of all linked lists
-		class LinkedListNode {
-		public:
-			LinkedListNode(NodePtr nxtptr = nullptr) : nxtptr_(nxtptr) {}
-			NodePtr nxtptr_{};
-		};
-
-		//LinkedList plus Data. Used for all nodes after the root node.
-		//Having an unmovable root node avoids the problem of having to
-		//reinsert nodes into the unordered_map should the first node
-		//be extracted.
-		class DataLinkedListNode : public LinkedListNode {
-		public:
-			DataLinkedListNode(NodePtr nxtptr, T_KEY key, T_OBJ& obj) 
-				: LinkedListNode(nxtptr), key_(key), obj_(std::move(obj)) {}
-
-			DataLinkedListNode(T_KEY key, T_OBJ& obj) : key_(key), obj_(std::move(obj)) {}
-
-			T_KEY key_;
-			T_OBJ obj_;
-		};
-		
+	//LinkedList default. Only used for the first node of all linked lists
+	class LinkedListNode {
 	public:
-		MultiHashmap();
-
-		MultiHashmap(const MultiHashmap<T_KEY, T_OBJ>& hashmap) = delete; //copy constructor to-do
-		MultiHashmap<T_KEY, T_OBJ>& operator=(const MultiHashmap<T_KEY, T_OBJ>& hashmap) = delete; //assignment to-do
-
-		~MultiHashmap();
-
-		int getNumItems() const; //returns how many items are currently stored
-
-		//Inserts an object into the container indexed by a key.
-		void insertItem(T_KEY key, T_OBJ& obj);
-
-		/*Checks whether the class contains an object stored using this key, that also satisfies a user-defined
-		* comparison function, compareFxn. 
-		*
-		* Uses: When there are multiple objects stored with the same key, you may narrow the search 
-		* by giving this a custom comparison function.
-		*
-		* Example of calling this function: 
-		* int key = 0;
-		* thisHashmap.doesContainObj(key, [desiredMemberGet, desiredAttribute](const T_OBJ& obj)->bool {
-		*  return (obj.getSomeMember() == desiredMemberGet && obj.attribute >= desiredAttribute; }}; 
-		*/
-		bool doesContainObj(const T_KEY& key, const CompareFxn compareFxn) const;
-
-		/*If no comparison function is provided, will search purely by key */
-		bool doesContainObj(const T_KEY& key) const;
-
-		/*Extracts any object matching key. If no such object can be found MultiHashMapNoSuchObj is thrown*/
-		T_OBJ extractItem(const T_KEY& key);
-
-		/*Extracts the first time found that matches this key that also satifies a 
-		* user-defined comparison function, compareFxn.
-		* If no object matching these parms are found, MultiHashMapNoSuchObj is thrown.
-		*
-		* Example of calling this function:
-		* int key = 0;
-		* thisHashmap.extractItem(key, [desiredMemberGet, desiredAttribute](const T_OBJ& obj)->bool {
-		*  return (obj.getSomeMember() == desiredMemberGet && obj.attribute < desiredAttribute; }};
-		*/
-		T_OBJ extractItem(const T_KEY& key, const CompareFxn compareFxn);
-
-	private:
-		int currentNumItems{ 0 }; //how many items are stored
-		const CompareFxn defaultCompareFxn_{ 
-			[](const T_OBJ&)->bool { return true; } 
-		}; //returns true
-
-		Map storInternal_;
-
-		//class level mutex. Separates reading and writing operations
-		mutable boost::shared_mutex mtx_;
-
+		LinkedListNode(NodePtr nxtptr = nullptr) : nxtptr_(nxtptr) {}
+		NodePtr nxtptr_{};
 	};
+
+	//LinkedList plus Data. Used for all nodes after the root node.
+	//Having an unmovable root node avoids the problem of having to
+	//reinsert nodes into the unordered_map should the first node
+	//be extracted.
+	class DataLinkedListNode : public LinkedListNode {
+	public:
+		DataLinkedListNode(NodePtr nxtptr, T_KEY key, T_OBJ& obj) 
+			: LinkedListNode(nxtptr), key_(key), obj_(std::move(obj)) {}
+
+		DataLinkedListNode(T_KEY key, T_OBJ& obj) : key_(key), obj_(std::move(obj)) {}
+
+		T_KEY key_;
+		T_OBJ obj_;
+	};
+		
+public:
+	MultiHashmap();
+
+	MultiHashmap(const MultiHashmap<T_KEY, T_OBJ>& hashmap) = delete; //copy constructor to-do
+	MultiHashmap<T_KEY, T_OBJ>& operator=(const MultiHashmap<T_KEY, T_OBJ>& hashmap) = delete; //assignment to-do
+
+	~MultiHashmap();
+
+	int getNumItems() const; //returns how many items are currently stored
+
+	//Inserts an object into the container indexed by a key.
+	void insertItem(T_KEY key, T_OBJ& obj);
+
+	/*Checks whether the class contains an object stored using this key, that also satisfies a user-defined
+	* comparison function, compareFxn. 
+	*
+	* Uses: When there are multiple objects stored with the same key, you may narrow the search 
+	* by giving this a custom comparison function.
+	*
+	* Example of calling this function: 
+	* int key = 0;
+	* thisHashmap.doesContainObj(key, [desiredMemberGet, desiredAttribute](const T_OBJ& obj)->bool {
+	*  return (obj.getSomeMember() == desiredMemberGet && obj.attribute >= desiredAttribute; }}; 
+	*/
+	bool doesContainObj(const T_KEY& key, const CompareFxn compareFxn) const;
+
+	/*If no comparison function is provided, will search purely by key */
+	bool doesContainObj(const T_KEY& key) const;
+
+	/*Extracts any object matching key. If no such object can be found MultiHashMapNoSuchObj is thrown*/
+	T_OBJ extractItem(const T_KEY& key);
+
+	/*Extracts the first time found that matches this key that also satifies a 
+	* user-defined comparison function, compareFxn.
+	* If no object matching these parms are found, MultiHashMapNoSuchObj is thrown.
+	*
+	* Example of calling this function:
+	* int key = 0;
+	* thisHashmap.extractItem(key, [desiredMemberGet, desiredAttribute](const T_OBJ& obj)->bool {
+	*  return (obj.getSomeMember() == desiredMemberGet && obj.attribute < desiredAttribute; }};
+	*/
+	T_OBJ extractItem(const T_KEY& key, const CompareFxn compareFxn);
+
+private:
+	int currentNumItems{ 0 }; //how many items are stored
+	const CompareFxn defaultCompareFxn_{ 
+		[](const T_OBJ&)->bool { return true; } 
+	}; //returns true
+
+	Map storInternal_;
+
+	//class level mutex. Separates reading and writing operations
+	mutable boost::shared_mutex mtx_;
+
+};
 }
 
 template <typename T_KEY, class T_OBJ>
@@ -126,7 +126,6 @@ inline void amazoom::MultiHashmap<T_KEY, T_OBJ>::insertItem(T_KEY key, T_OBJ& ob
 
 	boost::unique_lock<boost::shared_mutex> lock(mtx_);
 	
-
 	if (storInternal_.count(key)) { //if the root node already exists
 		//grab the root node
 		NodePtr rootNodePtr(storInternal_.at(key));

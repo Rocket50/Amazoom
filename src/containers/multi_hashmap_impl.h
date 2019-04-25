@@ -6,33 +6,33 @@
 
 namespace amazoom { 
 
-	//Bridge to connect MultiHashMap to WorkerAccessibleContainer interface
-	class MultiHashmapImpl : public WorkerAccessibleContainer {
-	private:
+//Bridge to connect MultiHashMap to WorkerAccessibleContainer interface
+class MultiHashmapImpl : public WorkerAccessibleContainer {
+private:
 
-		typedef amazoom::Item Item;
-		typedef int Key;
-		typedef std::function<bool(const Item& obj)> CompareFxn;
+	typedef amazoom::Item Item;
+	typedef int Key;
+	typedef std::function<bool(const Item& obj)> CompareFxn;
 
-	public:
-		MultiHashmapImpl();
-		~MultiHashmapImpl();
+public:
+	MultiHashmapImpl();
+	~MultiHashmapImpl();
 
-		virtual Item extractItem(const Key& key);
-		virtual Item extractItem(const Key& key, const CompareFxn compareFxn);
+	virtual Item extractItem(const Key& key);
+	virtual Item extractItem(const Key& key, const CompareFxn compareFxn);
 
-		virtual void insertItem(Key key, Item& obj);
+	virtual void insertItem(Key key, Item& obj);
 
-		virtual bool doesContainObj(const Key key);
-		virtual bool doesContainObj(const Key key, const CompareFxn compareFxn);
+	virtual bool doesContainObj(const Key key);
+	virtual bool doesContainObj(const Key key, const CompareFxn compareFxn);
 
-		virtual int getNumItems();
+	virtual int getNumItems();
 
-	private:
+private:
 
-		MultiHashmap<Key, Item> storage_;
+	MultiHashmap<Key, Item> storage_;
 
-	};
+};
 }
 
 #endif
