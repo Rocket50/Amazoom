@@ -9,7 +9,6 @@
 
 #include "containers/multi_hashmap_exceptions.h"
 #include "boost/thread.hpp"
-#include "containers/item_storage.h"
 
 namespace amazoom {
 	/* A multihashmap allows for quick insertions of objects, mapped by keys that need not be unique.
@@ -19,7 +18,6 @@ namespace amazoom {
 	*  Thread-safe. Allows multiple simutaneous reads, and single extraction/insertions
 	*/
 	template <typename T_KEY, class T_OBJ>
-	
 	class MultiHashmap {
 
 		class LinkedListNode; //forward declare
@@ -29,6 +27,7 @@ namespace amazoom {
 	    typedef std::shared_ptr<LinkedListNode> NodePtr;
 		typedef std::shared_ptr<DataLinkedListNode> DataNodePtr;
 		typedef std::unordered_map<T_KEY, NodePtr> Map;
+		typedef std::function<bool(const Item& obj)> CompareFxn;
 
 		//LinkedList default. Only used for the first node of all linked lists
 		class LinkedListNode {
@@ -54,6 +53,10 @@ namespace amazoom {
 		
 	public:
 		MultiHashmap();
+
+		MultiHashmap(const MultiHashmap<T_KEY, T_OBJ>& hashmap) = delete; //copy constructor to-do
+		MultiHashmap<T_KEY, T_OBJ>& operator=(const MultiHashmap<T_KEY, T_OBJ>& hashmap) = delete; //assignment to-do
+
 		~MultiHashmap();
 
 		int getNumItems() const; //returns how many items are currently stored
@@ -72,7 +75,7 @@ namespace amazoom {
 		* thisHashmap.doesContainObj(key, [desiredMemberGet, desiredAttribute](const T_OBJ& obj)->bool {
 		*  return (obj.getSomeMember() == desiredMemberGet && obj.attribute >= desiredAttribute; }}; 
 		*/
-		bool doesContainObj(const T_KEY& key, const std::function<bool(const T_OBJ& obj)> compareFxn) const;
+		bool doesContainObj(const T_KEY& key, const CompareFxn compareFxn) const;
 
 		/*If no comparison function is provided, will search purely by key */
 		bool doesContainObj(const T_KEY& key) const;
@@ -89,14 +92,12 @@ namespace amazoom {
 		* thisHashmap.extractItem(key, [desiredMemberGet, desiredAttribute](const T_OBJ& obj)->bool {
 		*  return (obj.getSomeMember() == desiredMemberGet && obj.attribute < desiredAttribute; }};
 		*/
-		T_OBJ extractItem(const T_KEY& key, const std::function<bool(const T_OBJ& obj)> compareFxn);
-
-		MultiHashmap<T_KEY, T_OBJ>(const MultiHashmap<T_KEY, T_OBJ>& init) {};
+		T_OBJ extractItem(const T_KEY& key, const CompareFxn compareFxn);
 
 	private:
 		int currentNumItems{ 0 }; //how many items are stored
-		const std::function<bool(const T_OBJ& obj)> defaultCompareFxn_{ 
-			[](const T_OBJ&)->bool {return true; } 
+		const CompareFxn defaultCompareFxn_{ 
+			[](const T_OBJ&)->bool { return true; } 
 		}; //returns true
 
 		Map storInternal_;
@@ -166,7 +167,7 @@ inline void amazoom::MultiHashmap<T_KEY, T_OBJ>::insertItem(T_KEY key, T_OBJ& ob
 }
 
 template<typename T_KEY, class T_OBJ>
-inline bool amazoom::MultiHashmap<T_KEY, T_OBJ>::doesContainObj(const T_KEY& key, const std::function<bool(const T_OBJ& obj)> compareFxn) const {
+inline bool amazoom::MultiHashmap<T_KEY, T_OBJ>::doesContainObj(const T_KEY& key, const CompareFxn compareFxn) const {
 	boost::unique_lock<boost::shared_mutex> lock(mtx_);
 
 	if (storInternal_.count(key) == 0) {
@@ -201,7 +202,7 @@ inline T_OBJ amazoom::MultiHashmap<T_KEY, T_OBJ>::extractItem(const T_KEY& key){
 
 template<typename T_KEY, class T_OBJ>
 inline T_OBJ amazoom::MultiHashmap<T_KEY, T_OBJ>::extractItem(
-	const T_KEY& key, const std::function<bool(const T_OBJ&obj)> compareFxn) {
+	const T_KEY& key, const CompareFxn compareFxn) {
 
 	boost::unique_lock<boost::shared_mutex> lock(mtx_);
 
