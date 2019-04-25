@@ -6,9 +6,11 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 #include <ctime>
 #include <random>
 #include <functional>
+#include <cmath>
 
 #include "warehouse_etc/item_definition.h"
 #include "containers/multi_hashmap.h"
+#include "containers/box.h"
 
 #include "unit_tests.h"
 
@@ -23,70 +25,59 @@ namespace AmazoomUnitTests
 	public:
 
 
-	//create and checks whether item is created with the right values
-	TEST_METHOD(CheckValue) {
-		const int itemID = 1;
-		const float weight = 12.0f;
-		amazoom::Item i(itemID, weight, true);
-		checkItemEquals(i, itemID, weight, true);
+		//create and checks whether item is created with the right values
+		TEST_METHOD(CheckValue) {
+			const int itemID = 1;
+			const float weight = 12.0f;
+			amazoom::Item i(itemID, weight, true);
+			checkItemEquals(i, itemID, weight, true);
 
-		const int itemID2 = 1;
-		const float weight2 = 12.0f;
-		const bool isLarge2 = false;
-		amazoom::Item i2(itemID, weight, isLarge2);
-		checkItemEquals(i2, itemID2, weight2, isLarge2);
-	}
+			const int itemID2 = 1;
+			const float weight2 = 12.0f;
+			const bool isLarge2 = false;
+			amazoom::Item i2(itemID, weight, isLarge2);
+			checkItemEquals(i2, itemID2, weight2, isLarge2);
+		}
 
-	void Item_PassByValue(amazoom::Item i) {}
-	//creates and checks constructor rules
-	TEST_METHOD(CheckCopyCon) {
+		void Item_PassByValue(amazoom::Item i) {}
+		//creates and checks constructor rules
+		TEST_METHOD(CheckCopyCon) {
 
-		const int itemID1 = 1;
-		const float weight1 = 12.0f;
+			const int itemID1 = 1;
+			const float weight1 = 12.0f;
 
-		amazoom::Item oldItem(itemID1, weight1);
-		Item_PassByValue(std::move(oldItem));
+			amazoom::Item oldItem(itemID1, weight1);
+			Item_PassByValue(std::move(oldItem));
 
-		checkItemIsInvalid(oldItem);
+			checkItemIsInvalid(oldItem);
 
-	}
+		}
 
-	TEST_METHOD(CheckCopyAssign) {
+		TEST_METHOD(OverloadedCompares) {
 
-		const int itemID1 = 1;
-		const float weight1 = 12.0f;
+			const int itemID1 = 1;
+			const float weight1 = 12.0f;
 
-		amazoom::Item oldItem(itemID1, weight1);
-		amazoom::MultiHashmap<int, amazoom::Item> bob;
-	}
-
-	TEST_METHOD(OverloadedCompares) {
-
-		const int itemID1 = 1;
-		const float weight1 = 12.0f;
-
-		amazoom::Item item(itemID1, weight1);
-		amazoom::Item item2(itemID1, weight1);
+			amazoom::Item item(itemID1, weight1);
+			amazoom::Item item2(itemID1, weight1);
 		
 		 
-		bool isEqual = (item == item2);
-		Assert::IsTrue(isEqual);
-		const int itemID2 = 5;
+			bool isEqual = (item == item2);
+			Assert::IsTrue(isEqual);
+			const int itemID2 = 5;
 		
-		amazoom::Item item3(itemID2, weight1);
-		isEqual = (itemID2 == weight1);
+			amazoom::Item item3(itemID2, weight1);
+			isEqual = (itemID2 == weight1);
 
-		Assert::IsFalse(isEqual);
+			Assert::IsFalse(isEqual);
 
+		};
 	};
-
-	};
-};
 
 	TEST_CLASS(Mult_Hashmap_Testing) {
 
 		TEST_METHOD(SingleInsertion) {
-			
+
 			const float weight(12.0f);
 
 			amazoom::Item item(5, weight);
@@ -165,7 +156,7 @@ namespace AmazoomUnitTests
 
 		};
 
-		
+
 		TEST_METHOD(RandomExtractionSpecial) {
 			const int NUMTOTEST = 10000;
 
@@ -261,7 +252,7 @@ namespace AmazoomUnitTests
 
 
 
-			
+
 			}
 		};
 
@@ -276,7 +267,7 @@ namespace AmazoomUnitTests
 			container.insertItem(newItem.getID(), newItem);
 
 			Assert::IsTrue(container.doesContainObj(ID));
-			Assert::IsFalse(container.doesContainObj(ID+1));
+			Assert::IsFalse(container.doesContainObj(ID + 1));
 
 			const int ID2 = 54;
 			const float WEIGHT2 = 100.0f;
@@ -301,10 +292,10 @@ namespace AmazoomUnitTests
 			container.insertItem(newItem.getID(), newItem);
 
 			Assert::IsTrue(container.doesContainObj(ID, comparisonFunc));
-			Assert::IsFalse(container.doesContainObj(ID+1, comparisonFunc));
+			Assert::IsFalse(container.doesContainObj(ID + 1, comparisonFunc));
 
 			auto comparisonFuncWeightID = [ID, WEIGHT](const amazoom::Item& item)->bool {
-			
+
 				return item.getID() == ID && item.getWeight() == WEIGHT;
 
 			};
@@ -351,80 +342,55 @@ namespace AmazoomUnitTests
 			Assert::AreEqual(0, container.getNumItems());
 		};
 
-		static void multithreadingInsert(const int NUM_INSERTIONS, 
-			amazoom::MultiHashmap<int, amazoom::Item>& hashmap, 
-			std::vector<std::pair<int, float>>& results,
-			std::mt19937& eng) {
-
-			const int MAX_RAND_ID = 20;
-			const float MAX_WEIGHT = 10.0f;
-
-			for (int i = 0; i < NUM_INSERTIONS; i++) {
-				auto idRandomizer = std::uniform_int_distribution<int>(0, MAX_RAND_ID);
-				int randID(idRandomizer(eng));
-
-				float randWeight(1 + std::rand() / ((RAND_MAX + 1u) / MAX_WEIGHT));
-
-
-				results.push_back(
-					std::make_pair<int, float>(std::move(randID), std::move(randWeight)));
-
-				amazoom::Item newItem(randID, randWeight);
-				hashmap.insertItem(newItem.getID(), newItem);
-
-			}
-		}
 
 		TEST_METHOD(RandomMultithreading) {
 
 			const int NUM_TO_TEST_PER_THREAD = 3000;
 			const int THREADS = 4;
 
-
 			std::srand(std::time(nullptr)); // use current time as seed for random generator
 			std::random_device rd; // obtain a random number from hardware
 			std::mt19937 eng(rd()); // seed the generator
 
-			std::vector<std::pair<int, float>> itemCreateVals;
+			std::vector<std::unique_ptr<boost::thread>> threadPtrs;
 
+			//array containing key-value pairs each thread generates and stores into the hashmap
+			std::vector<std::pair<int, float>> perThreadValues[THREADS];
 
-
-			amazoom::MultiHashmap<int, amazoom::Item> hashmap;
-
-			std::vector<std::pair<int, float>> stuff[THREADS];
-
-			std::vector<std::unique_ptr<boost::thread>> threads;
+			amazoom::MultiHashmapImpl hashmap1;
+			amazoom::WorkerAccessibleContainer& hashmap = hashmap1;
+			
 
 			//create empty threads, not started
 			for (int i = 0; i < THREADS; i++) {
-				threads.push_back(
+				threadPtrs.push_back(
 					std::unique_ptr<boost::thread>());
-
-
 			}
 
 			//start each thread
 			for (int i = 0; i < THREADS; i++) {
-
-				threads.at(i).reset(((new boost::thread(multithreadingInsert, NUM_TO_TEST_PER_THREAD, std::ref(hashmap), std::ref(stuff[i]), std::ref(eng)))));
-
+				threadPtrs.at(i).reset(((
+					new boost::thread(multithreadingInsert, 
+								 	  NUM_TO_TEST_PER_THREAD, 
+									  std::ref(hashmap),
+									  std::ref(perThreadValues[i]),
+									  std::ref(eng)))));
 			}
 
 			//wait for each thread to finish its job
 			for (int i = 0; i < THREADS; i++) {
-				threads.at(i)->join();
+				threadPtrs.at(i)->join();
 			}
 
-
+			//combine each thread's key-value pairs into a single vector
+			std::vector<std::pair<int, float>> itemCreateVals;
 			for (int i = 0; i < THREADS; i++) {
 				for (unsigned int j = 0; j < NUM_TO_TEST_PER_THREAD; j++) {
-					itemCreateVals.push_back(stuff[i].back());
-					stuff[i].pop_back();
+					itemCreateVals.push_back(perThreadValues[i].back());
+					perThreadValues[i].pop_back();
 				}
 
 			}
-
-
 
 			for (int i = 0; i < (NUM_TO_TEST_PER_THREAD*THREADS); i++) {
 
@@ -440,7 +406,7 @@ namespace AmazoomUnitTests
 				auto comparisonFuncWeightID = [weight](const amazoom::Item& item)->bool {
 					return item.getWeight() == weight;
 				};
-
+				
 				amazoom::Item itemRetrieved(hashmap.extractItem(id, comparisonFuncWeightID));
 
 				checkItemEquals(itemRetrieved, id, weight);
@@ -448,4 +414,71 @@ namespace AmazoomUnitTests
 			}
 		};
 	};
+
+
+	TEST_CLASS(Box_Testing) {
+	public:
+		TEST_METHOD(OverweightCheck) {
+
+			
+			
+			const int MIN_ID = 0;
+			const int MAX_ID = 100;
+			const float MIN_MAX_WEIGHT = 2.65f;
+
+			const float BOX_MAX_WEIGHT = 200.0f;
+
+			//number of items to generate to completely fill the box plus an extra to
+			//check overweight
+			int NUM_ITEMS = (int)(std::floor(BOX_MAX_WEIGHT / MIN_MAX_WEIGHT)) + 1;
+
+			typedef std::vector<amazoom::ItemProperties> Properties;
+			typedef std::vector<amazoom::Item> Items;
+
+			//randomly generated items, and properties for future reference
+			std::pair<Properties, Items> gens(getRandomItems(NUM_ITEMS, MIN_ID, MAX_ID, MIN_MAX_WEIGHT, MIN_MAX_WEIGHT));
+
+			//pull out of pairs into single vectors
+			Properties properties(std::get<Properties>(gens));
+			Items items(std::move(std::get<Items>(gens)));
+			
+			//testing object 
+			amazoom::Box box(BOX_MAX_WEIGHT);
+			
+			//information about what props were inserted
+			Properties insertedProps;
+			
+			//number of insertions to do to reach, but not go over the box's weight limit
+			const float limit(std::floor(box.getMaxWeight() / MIN_MAX_WEIGHT));
+
+			for (int i = 0; i < limit; i++) {
+
+				Assert::IsTrue(box.canInsert(items.at(0)));
+
+				//insert item
+				box.insertItem(items.at(0));
+				items.pop_back();
+
+				//record which items were stored
+				insertedProps.push_back(properties.at(0));
+				properties.pop_back();
+			}
+			Assert::IsFalse(box.canInsert(items.at(0)));
+			
+			//should fail
+			bool didExcept = false;
+			try {
+				box.insertItem(items.at(0));
+			}
+			catch(amazoom::BoxOverweightException& e){
+				didExcept = true;
+			}
+			Assert::IsTrue(didExcept);
+
+
+
+		}
+	};
+
+};
 

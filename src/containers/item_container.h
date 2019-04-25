@@ -5,7 +5,7 @@
 
 #include "warehouse_etc/item_definition.h"
 #include "containers/multi_hashmap_impl.h"
-#include "containers/item_storage.h"
+#include "containers/worker_accessible_container.h"
 
 #include <boost/thread.hpp>
 #include <memory>
@@ -13,11 +13,13 @@
 namespace amazoom {
 	//ItemContainer is an interface from which other more specialized containers may be built
 	class ItemContainer {
+	private:
+		typedef std::unique_ptr<WorkerAccessibleContainer> StoragePtr;
+
 	public:
-
-		typedef std::unique_ptr<ItemStorage> StoragePtr;
-
 		ItemContainer();
+
+		//Dependency Injection
 		ItemContainer(StoragePtr& storage);
 		~ItemContainer();
 
@@ -41,7 +43,7 @@ namespace amazoom {
 		virtual void insertItem(Item& item) = 0;
 
 	protected:
-		StoragePtr storage_{ std::unique_ptr<MultiHashmapImpl>(new MultiHashmapImpl()) } ;
+		StoragePtr storage_{ std::unique_ptr<MultiHashmapImpl>(new MultiHashmapImpl()) };
 	};
 
 }

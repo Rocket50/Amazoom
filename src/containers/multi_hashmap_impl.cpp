@@ -8,7 +8,7 @@ amazoom::Item amazoom::MultiHashmapImpl::extractItem(const Key & key) {
 	return std::move(storage_.extractItem(key));
 }
 
-amazoom::Item amazoom::MultiHashmapImpl::extractItem(const Key & key, const std::function<bool(const Item&obj)> compareFxn) {
+amazoom::Item amazoom::MultiHashmapImpl::extractItem(const Key & key, CompareFxn compareFxn) {
 	return std::move(storage_.extractItem(key, compareFxn));
 }
 
@@ -20,7 +20,7 @@ bool amazoom::MultiHashmapImpl::doesContainObj(const Key key) {
 	return storage_.doesContainObj(key);
 }
 
-bool amazoom::MultiHashmapImpl::doesContainObj(const Key key, const std::function<bool(const Item&obj)> compareFxn) {
+bool amazoom::MultiHashmapImpl::doesContainObj(const Key key, CompareFxn compareFxn) {
 	return storage_.doesContainObj(key, compareFxn);
 }
 

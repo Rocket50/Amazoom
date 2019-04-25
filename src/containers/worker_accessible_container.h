@@ -5,15 +5,12 @@
 #include <functional>
 
 namespace amazoom {
-	/*Interfaces for swapping out an underlying storage class using Inversion of Control
-	*
-	*/
+	//Read-only container
 	class Checkable {
 	private:
 		typedef amazoom::Item Item;
 		typedef int Key;
 		
-
 	public:
 		//searches through the underlying storage scheme for an object purely by key
 		virtual bool doesContainObj(const Key key) = 0;
@@ -27,12 +24,11 @@ namespace amazoom {
 		virtual int getNumItems() = 0;
 	};
 
+	//Write-only container
 	class Storable {
 	private:
 		typedef amazoom::Item Item;
 		typedef int Key;
-		
-
 
 	public:
 		//Searches through the underlying storage scheme for an object purely by key and extracts it
@@ -48,6 +44,8 @@ namespace amazoom {
 		*/
 		virtual void insertItem(Key key, Item& obj) = 0;
 	};
-
-	class ItemStorage : public Storable, public Checkable{ };
+	/*Interface for swapping out an underlying storage class
+	* Containers must be checkable, and storable
+	*/
+	class WorkerAccessibleContainer : public Storable, public Checkable{ };
 }
