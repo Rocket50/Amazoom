@@ -21,7 +21,7 @@ public:
 
 	Box(const float max_weight = 100.0f); //uses the default scheme defined in ItemContainer
 	Box(StoragePtr& storage, const float max_weight = 100.0f); //accepts custom key-value mapping schemes
-	~Box(); 
+	virtual ~Box(); 
 
 	
 

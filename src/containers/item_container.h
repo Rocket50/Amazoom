@@ -22,7 +22,7 @@ public:
 
 	//Dependency Injection
 	ItemContainer(StoragePtr& storage);
-	~ItemContainer();
+	virtual ~ItemContainer();
 
 	//Overrideable function that allows a derived class to 
 	//set their own insertion policy. Returns true by default.
