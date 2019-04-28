@@ -18,6 +18,14 @@ void amazoom::Warehouse::detach(Observer obsvr) {
 	boost::lock_guard<boost::mutex> lock(mtx_);
 }
 
+void amazoom::Warehouse::move(std::shared_ptr<DynamicObject> objToMove, Cardinal dir) {
+}
+
+void amazoom::Warehouse::move(std::shared_ptr<DynamicObject> objToMove, Point p) {
+}
+
 void amazoom::Warehouse::getState() {
 	boost::lock_guard<boost::mutex> lock(mtx_);
+
+
 }
